@@ -69,8 +69,8 @@ TabTestBaslat::TabTestBaslat(QWidget *parent) : QWidget(parent) {
     
 
 
-    minRssiCombo->setCurrentText("-80");
-    maxRssiCombo->setCurrentText("-50");
+    minRssiCombo->setCurrentText("-50");
+    maxRssiCombo->setCurrentText("-80");
 
     rssiRangeLayout->addStretch();
     rssiRangeLayout->addWidget(minLabel);
@@ -144,6 +144,10 @@ void TabTestBaslat::baslatTest() {
         return;
     }
 
+    // RSSI alanlarını devre dışı bırak
+    minRssiCombo->setEnabled(false);
+    maxRssiCombo->setEnabled(false);
+
     statusLabel->setText("Durum: Port açılıyor...");
 
     port->setPortName(selectedPort);
@@ -155,6 +159,10 @@ void TabTestBaslat::baslatTest() {
 
     if (!port->open(QIODevice::ReadOnly)) {
         QMessageBox::critical(this, "Hata", "Seri port açılamadı:\n" + port->errorString());
+
+        // Açılmadıysa geri aktif et
+        minRssiCombo->setEnabled(true);
+        maxRssiCombo->setEnabled(true);
         return;
     }
 
@@ -181,13 +189,19 @@ void TabTestBaslat::baslatTest() {
     testQuery.exec();
 }
 
+
 void TabTestBaslat::durdurTest() {
     if (port && port->isOpen()) {
         port->close();
         logEdit->appendPlainText(">> Port kapatıldı.");
         statusLabel->setText("Durum: Test durduruldu.");
     }
+
+    // RSSI comboBox'larını tekrar aktif et
+    minRssiCombo->setEnabled(true);
+    maxRssiCombo->setEnabled(true);
 }
+
 
 void TabTestBaslat::seriVeriOku() {
     QString seri_no = seriNoEdit->text().trimmed();
@@ -265,7 +279,15 @@ void TabTestBaslat::guncelleGorunum() {
     genelSonucLabel->setStyleSheet(pass
         ? "QLabel { color: green; font-weight: bold; }"
         : "QLabel { color: red; font-weight: bold; }");
-
+    
+    if (rf_ok) {
+    QString seri_no = seriNoEdit->text().trimmed();
+    QSqlQuery q;
+    q.prepare("UPDATE modem_testleri SET rf = 1 WHERE seri_no = :seri_no");
+    q.bindValue(":seri_no", seri_no);
+    q.exec();
+}
+    
     baslatBlink();
 }
 

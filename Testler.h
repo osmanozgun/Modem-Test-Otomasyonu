@@ -47,6 +47,9 @@ private:
     QComboBox *portCombo;
     QComboBox *minRssiCombo;
     QComboBox *maxRssiCombo;
+    QList<QComboBox*> portCombos;
+    QList<QCheckBox*> portChecks;
+
     QTimer *blinkTimer = nullptr;
     int blinkCount = 0;
     bool blinkVisible = true;
