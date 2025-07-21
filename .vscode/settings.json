@@ -1,0 +1,16 @@
+{
+    "files.associations": {
+        "qsqldatabase": "cpp",
+        "qplaintextedit": "cpp",
+        "qsqlquery": "cpp",
+        "qregularexpression": "cpp",
+        "qsqlerror": "cpp",
+        "qdir": "cpp",
+        "qstringlist": "cpp",
+        "qdatetime": "cpp",
+        "qhboxlayout": "cpp",
+        "qvboxlayout": "cpp",
+        "qregularexpressionmatch": "cpp",
+        "qcombobox": "cpp"
+    }
+}
