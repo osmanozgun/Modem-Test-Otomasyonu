@@ -20,6 +20,7 @@
 #include <QComboBox>
 #include <QCheckBox>
 
+
 class TabTestBaslat : public QWidget {
     Q_OBJECT
 
@@ -37,7 +38,7 @@ private:
     void baslatBlink();
     void durBlink();
     bool RFTesti(const QStringList &logs);
-
+    QByteArray readBuffer;
     QSerialPort *port;
     QLabel *statusLabel;
     QLabel *eepromLabel, *rfLabel, *networkLabel, *genelSonucLabel, *rssiLabel;

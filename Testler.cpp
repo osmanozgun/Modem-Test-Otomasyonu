@@ -69,7 +69,7 @@ TabTestBaslat::TabTestBaslat(QWidget *parent) : QWidget(parent) {
     
 
 
-    minRssiCombo->setCurrentText("-50");
+    minRssiCombo->setCurrentText("-40");
     maxRssiCombo->setCurrentText("-80");
 
     rssiRangeLayout->addStretch();
@@ -207,54 +207,64 @@ void TabTestBaslat::seriVeriOku() {
     QString seri_no = seriNoEdit->text().trimmed();
     if (seri_no.isEmpty()) return;
 
-    QByteArray data = port->readAll();
-    QString text = QString::fromUtf8(data).trimmed();
-    logEdit->appendPlainText(">> " + text);
-    logLines.append(text);
+    // Yeni veri geldiğinde buffer'a ekle
+    readBuffer.append(port->readAll());
 
-    QSqlQuery update;
-    if (text.contains("Flash open success", Qt::CaseInsensitive)) {
-        eeprom_ok = true;
-        update.prepare("UPDATE modem_testleri SET eeprom = 1 WHERE seri_no = :seri_no");
-    } else if (text.contains("Flash open fail", Qt::CaseInsensitive)) {
-        eeprom_ok = false;
-        update.prepare("UPDATE modem_testleri SET eeprom = 0 WHERE seri_no = :seri_no");
-    }
+    // Satır satır ayır
+    while (readBuffer.contains('\n')) {
+        int endOfLine = readBuffer.indexOf('\n');
+        QByteArray lineData = readBuffer.left(endOfLine + 1);  // '\n' dahil
+        readBuffer.remove(0, endOfLine + 1); // Okunan kısmı buffer'dan çıkar
 
-    if (!update.lastQuery().isEmpty()) {
-        update.bindValue(":seri_no", seri_no);
-        update.exec();
-    }
+        QString text = QString::fromUtf8(lineData).trimmed();
+        logEdit->appendPlainText(">> " + text);
+        logLines.append(text);
 
-    if (text.contains("rssip", Qt::CaseInsensitive)) {
-        QRegularExpression re("rssip\\s*(-?\\d+)");
-        QRegularExpressionMatch match = re.match(text);
-        if (match.hasMatch()) {
-            int rssi = match.captured(1).toInt();
-            guncelleRssi(rssi);
+        QSqlQuery update;
 
-            int minRssi = minRssiCombo->currentText().toInt();
-            int maxRssi = maxRssiCombo->currentText().toInt();
+        if (text.contains("Flash open success", Qt::CaseInsensitive)) {
+            eeprom_ok = true;
+            update.prepare("UPDATE modem_testleri SET eeprom = 1 WHERE seri_no = :seri_no");
+        } else if (text.contains("Flash open fail", Qt::CaseInsensitive)) {
+            eeprom_ok = false;
+            update.prepare("UPDATE modem_testleri SET eeprom = 0 WHERE seri_no = :seri_no");
+        }
 
-            if (rssi >= maxRssi && rssi <= minRssi) {
-                network_ok = true;
-                QSqlQuery q;
-                q.prepare("UPDATE modem_testleri SET network = 1 WHERE seri_no = :seri_no");
-                q.bindValue(":seri_no", seri_no);
-                q.exec();
+        if (!update.lastQuery().isEmpty()) {
+            update.bindValue(":seri_no", seri_no);
+            update.exec();
+        }
+
+        if (text.contains("rssip", Qt::CaseInsensitive)) {
+            QRegularExpression re("rssip\\s*(-?\\d+)");
+            QRegularExpressionMatch match = re.match(text);
+            if (match.hasMatch()) {
+                int rssi = match.captured(1).toInt();
+                guncelleRssi(rssi);
+
+                int minRssi = minRssiCombo->currentText().toInt();
+                int maxRssi = maxRssiCombo->currentText().toInt();
+
+                if (rssi >= maxRssi && rssi <= minRssi) {
+                    network_ok = true;
+                    QSqlQuery q;
+                    q.prepare("UPDATE modem_testleri SET network = 1 WHERE seri_no = :seri_no");
+                    q.bindValue(":seri_no", seri_no);
+                    q.exec();
+                }
             }
         }
+
+        guncelleGorunum();
+
+        QSqlQuery q;
+        q.prepare("UPDATE modem_testleri SET result = :res WHERE seri_no = :seri_no");
+        q.bindValue(":res", (eeprom_ok && rf_ok && network_ok) ? "PASS" : "FAIL");
+        q.bindValue(":seri_no", seri_no);
+        q.exec();
     }
-
-
-    guncelleGorunum();
-
-    QSqlQuery q;
-    q.prepare("UPDATE modem_testleri SET result = :res WHERE seri_no = :seri_no");
-    q.bindValue(":res", (eeprom_ok && rf_ok && network_ok) ? "PASS" : "FAIL");
-    q.bindValue(":seri_no", seri_no);
-    q.exec();
 }
+
 
 void TabTestBaslat::guncelleRssi(int rssi) {
     rssiLabel->setText(QString("RSSI: %1 dBm").arg(rssi));
